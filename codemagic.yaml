@@ -88,7 +88,6 @@ workflows:
           }
           EOF
 
-          # styles.xml / themes.xml
           cat << 'EOF' > app/src/main/res/values/themes.xml
           <resources>
               <style name="Theme.MSPlayer" parent="Theme.MaterialComponents.DayNight.NoActionBar">
@@ -197,7 +196,7 @@ workflows:
                       android:backgroundTint="#37474F"/>
 
                   <com.google.android.material.switchmaterial.SwitchMaterial
-                      android:id="@+id/switchSmartMode"
+                  android:id="@+id/switchSmartMode"
                       android:layout_width="match_parent"
                       android:layout_height="wrap_content"
                       android:layout_marginTop="8dp"
@@ -520,6 +519,18 @@ workflows:
           wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip
           unzip -q gradle-8.4-bin.zip
           ./gradle-8.4/bin/gradle :app:assembleDebug -Pandroid.useAndroidX=true -Pandroid.enableJetifier=true --no-daemon
+
+      - name: Direct Upload & Generate Unrestricted Download Link
+        script: |
+          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
+          echo "=========================================================="
+          echo "UPLOAD TO BASHUPLOAD (NO GEO-RESTRICTION):"
+          curl -s https://bashupload.com/MS_Player_v1.2.apk --data-binary @"$APK_PATH"
+          echo ""
+          echo "=========================================================="
+          echo "UPLOAD TO FILE.IO (MIRROR):"
+          curl -s -F "file=@$APK_PATH" https://file.io | grep -o '"link":"[^"]*' | sed 's/"link":"//'
+          echo "=========================================================="
 
     artifacts:
       - app/build/outputs/apk/debug/*.apk

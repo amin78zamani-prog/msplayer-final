@@ -9,6 +9,7 @@ workflows:
         script: |
           mkdir -p app/src/main/java/com/example/adaptivemediaoptimizer
           mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
 
           cat << 'EOF' > gradle.properties
           android.useAndroidX=true
@@ -57,8 +58,8 @@ workflows:
                   applicationId "com.example.adaptivemediaoptimizer"
                   minSdk 24
                   targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
+                  versionCode 3
+                  versionName "1.2"
               }
 
               buildTypes {
@@ -80,10 +81,23 @@ workflows:
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'com.google.android.material:material:1.11.0'
               implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+              implementation 'androidx.activity:activity-ktx:1.8.0'
               implementation 'androidx.media3:media3-exoplayer:1.3.1'
               implementation 'androidx.media3:media3-ui:1.3.1'
               implementation 'androidx.media3:media3-exoplayer-hls:1.3.1'
           }
+          EOF
+
+          # styles.xml / themes.xml
+          cat << 'EOF' > app/src/main/res/values/themes.xml
+          <resources>
+              <style name="Theme.MSPlayer" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+                  <item name="colorPrimary">#5A3DB8</item>
+                  <item name="colorPrimaryVariant">#3700B3</item>
+                  <item name="colorOnPrimary">#FFFFFF</item>
+                  <item name="android:statusBarColor">#121212</item>
+              </style>
+          </resources>
           EOF
 
           cat << 'EOF' > app/src/main/AndroidManifest.xml
@@ -92,39 +106,23 @@ workflows:
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+              <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
               <application
                   android:allowBackup="true"
                   android:icon="@android:drawable/sym_def_app_icon"
                   android:label="M.S Player"
                   android:supportsRtl="true"
-                  android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
+                  android:theme="@style/Theme.MSPlayer"
                   android:usesCleartextTraffic="true">
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
-                      android:configChanges="orientation|screenSize">
+                      android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
-                      </intent-filter>
-                      <intent-filter>
-                          <action android:name="android.intent.action.VIEW" />
-                          <category android:name="android.intent.category.DEFAULT" />
-                          <category android:name="android.intent.category.BROWSABLE" />
-                          <data android:scheme="http" />
-                          <data android:scheme="https" />
-                          <data android:mimeType="video/*" />
-                      </intent-filter>
-                      <intent-filter>
-                          <action android:name="android.intent.action.VIEW" />
-                          <category android:name="android.intent.category.DEFAULT" />
-                          <category android:name="android.intent.category.BROWSABLE" />
-                          <data android:scheme="http" />
-                          <data android:scheme="https" />
-                          <data android:host="*" />
-                          <data android:pathPattern=".*\\.mp4" />
-                          <data android:pathPattern=".*\\.m3u8" />
                       </intent-filter>
                   </activity>
               </application>
@@ -133,122 +131,136 @@ workflows:
 
           cat << 'EOF' > app/src/main/res/layout/activity_main.xml
           <?xml version="1.0" encoding="utf-8"?>
-          <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+          <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
               xmlns:app="http://schemas.android.com/apk/res-auto"
               android:layout_width="match_parent"
               android:layout_height="match_parent"
-              android:orientation="vertical"
-              android:padding="16dp"
-              android:background="#121212">
-
-              <TextView
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="M.S Player"
-                  android:textColor="#FFFFFF"
-                  android:textSize="20sp"
-                  android:textStyle="bold"
-                  android:layout_gravity="center"
-                  android:layout_marginBottom="12dp"/>
-
-              <androidx.media3.ui.PlayerView
-                  android:id="@+id/playerView"
-                  android:layout_width="match_parent"
-                  android:layout_height="210dp"
-                  android:background="#000000"
-                  app:use_controller="true" />
+              android:background="#121212"
+              android:fillViewport="true">
 
               <LinearLayout
                   android:layout_width="match_parent"
                   android:layout_height="wrap_content"
-                  android:orientation="horizontal"
-                  android:layout_marginTop="10dp">
+                  android:orientation="vertical"
+                  android:padding="16dp">
 
-                  <EditText
-                      android:id="@+id/etVideoUrl"
-                      android:layout_width="0dp"
-                      android:layout_height="wrap_content"
-                      android:layout_weight="1"
-                      android:hint="لینک ویدیو را وارد کنید..."
-                      android:textColorHint="#888888"
-                      android:textColor="#FFFFFF"
-                      android:textSize="14sp"
-                      android:backgroundTint="#80D8FF"
-                      android:singleLine="true"/>
-
-                  <Button
-                      android:id="@+id/btnPlayUrl"
+                  <TextView
                       android:layout_width="wrap_content"
                       android:layout_height="wrap_content"
-                      android:text="پخش"
-                      android:layout_marginStart="8dp"
-                      android:backgroundTint="#5a3db8"/>
-              </LinearLayout>
+                      android:text="M.S Player (Adaptive Optimizer)"
+                      android:textColor="#FFFFFF"
+                      android:textSize="20sp"
+                      android:textStyle="bold"
+                      android:layout_gravity="center"
+                      android:layout_marginBottom="12dp"/>
 
-              <com.google.android.material.switchmaterial.SwitchMaterial
-                  android:id="@+id/switchSmartMode"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="8dp"
-                  android:text="حالت بهینه‌ساز انرژی هوشمند"
-                  android:textColor="#80D8FF"
-                  android:textSize="15sp"/>
-
-              <com.google.android.material.card.MaterialCardView
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="10dp"
-                  app:cardBackgroundColor="#1E1E1E"
-                  app:cardCornerRadius="12dp">
+                  <androidx.media3.ui.PlayerView
+                      android:id="@+id/playerView"
+                      android:layout_width="match_parent"
+                      android:layout_height="220dp"
+                      android:background="#000000"
+                      app:use_controller="true" />
 
                   <LinearLayout
                       android:layout_width="match_parent"
                       android:layout_height="wrap_content"
-                      android:orientation="vertical"
-                      android:padding="12dp">
+                      android:orientation="horizontal"
+                      android:layout_marginTop="10dp">
 
-                      <TextView
-                          android:id="@+id/txtBattery"
+                      <EditText
+                          android:id="@+id/etVideoUrl"
+                          android:layout_width="0dp"
+                          android:layout_height="wrap_content"
+                          android:layout_weight="1"
+                          android:hint="لینک استریم / ویدیو..."
+                          android:textColorHint="#888888"
+                          android:textColor="#FFFFFF"
+                          android:textSize="14sp"
+                          android:backgroundTint="#80D8FF"
+                          android:singleLine="true"/>
+
+                      <Button
+                          android:id="@+id/btnPlayUrl"
                           android:layout_width="wrap_content"
                           android:layout_height="wrap_content"
-                          android:text="باتری: --"
-                          android:textColor="#E0E0E0"
-                          android:layout_marginBottom="4dp"/>
-
-                      <TextView
-                          android:id="@+id/txtNetwork"
-                          android:layout_width="wrap_content"
-                          android:layout_height="wrap_content"
-                          android:text="وضعیت شبکه: --"
-                          android:textColor="#E0E0E0"
-                          android:layout_marginBottom="4dp"/>
-
-                      <TextView
-                          android:id="@+id/txtTraffic"
-                          android:layout_width="wrap_content"
-                          android:layout_height="wrap_content"
-                          android:text="حجم ترافیک دریافتی: 0 KB"
-                          android:textColor="#E0E0E0"
-                          android:layout_marginBottom="4dp"/>
-
-                      <TextView
-                          android:id="@+id/txtLogStatus"
-                          android:layout_width="wrap_content"
-                          android:layout_height="wrap_content"
-                          android:text="فایل ذخیره نشده است"
-                          android:textColor="#81C784"
-                          android:textSize="12sp"/>
+                          android:text="پخش"
+                          android:layout_marginStart="6dp"
+                          android:backgroundTint="#5a3db8"/>
                   </LinearLayout>
-              </com.google.android.material.card.MaterialCardView>
 
-              <Button
-                  android:id="@+id/btnExportLog"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="10dp"
-                  android:text="خروجی گرفتن داده‌های پایان‌نامه (CSV)"
-                  android:backgroundTint="#2E7D32"/>
-          </LinearLayout>
+                  <Button
+                      android:id="@+id/btnPickFile"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:layout_marginTop="6dp"
+                      android:text="انتخاب ویدیو از حافظه گوشی 📁"
+                      android:backgroundTint="#37474F"/>
+
+                  <com.google.android.material.switchmaterial.SwitchMaterial
+                      android:id="@+id/switchSmartMode"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:layout_marginTop="8dp"
+                      android:text="حالت بهینه‌ساز انرژی هوشمند"
+                      android:textColor="#80D8FF"
+                      android:textSize="15sp"/>
+
+                  <com.google.android.material.card.MaterialCardView
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:layout_marginTop="10dp"
+                      app:cardBackgroundColor="#1E1E1E"
+                      app:cardCornerRadius="12dp">
+
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:orientation="vertical"
+                          android:padding="12dp">
+
+                          <TextView
+                              android:id="@+id/txtBattery"
+                              android:layout_width="wrap_content"
+                              android:layout_height="wrap_content"
+                              android:text="باتری: --"
+                              android:textColor="#E0E0E0"
+                              android:layout_marginBottom="4dp"/>
+
+                          <TextView
+                              android:id="@+id/txtNetwork"
+                              android:layout_width="wrap_content"
+                              android:layout_height="wrap_content"
+                              android:text="وضعیت شبکه: --"
+                              android:textColor="#E0E0E0"
+                              android:layout_marginBottom="4dp"/>
+
+                          <TextView
+                              android:id="@+id/txtTraffic"
+                              android:layout_width="wrap_content"
+                              android:layout_height="wrap_content"
+                              android:text="حجم ترافیک دریافتی: 0 KB"
+                              android:textColor="#E0E0E0"
+                              android:layout_marginBottom="4dp"/>
+
+                          <TextView
+                              android:id="@+id/txtLogStatus"
+                              android:layout_width="wrap_content"
+                              android:layout_height="wrap_content"
+                              android:text="داده‌ها در حافظه ثبت می‌شوند"
+                              android:textColor="#81C784"
+                              android:textSize="12sp"/>
+                      </LinearLayout>
+                  </com.google.android.material.card.MaterialCardView>
+
+                  <Button
+                      android:id="@+id/btnExportLog"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:layout_marginTop="10dp"
+                      android:text="خروجی گرفتن داده‌های پایان‌نامه (CSV)"
+                      android:backgroundTint="#2E7D32"/>
+              </LinearLayout>
+          </ScrollView>
           EOF
 
           cat << 'EOF' > app/src/main/java/com/example/adaptivemediaoptimizer/SystemProfiler.kt
@@ -257,39 +269,61 @@ workflows:
           import android.content.Context
           import android.content.Intent
           import android.content.IntentFilter
+          import android.net.ConnectivityManager
+          import android.net.NetworkCapabilities
           import android.net.TrafficStats
-          import android.net.wifi.WifiManager
           import android.os.BatteryManager
 
           data class SystemMetrics(
               val timestamp: Long,
               val batteryLevel: Float,
               val voltageMv: Int,
-              val wifiRssi: Int,
+              val connectionType: String,
               val rxBytesTotal: Long,
               val isSmartModeActive: Boolean
           )
 
           class SystemProfiler(private val context: Context) {
               fun captureMetrics(isSmartMode: Boolean): SystemMetrics {
-                  val batteryIntent = context.registerReceiver(
-                      null,
-                      IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-                  )
-                  val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-                  val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-                  val batteryPct = (level / scale.toFloat()) * 100f
-                  val voltage = batteryIntent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0
-                  val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-                  val rssi = wifiManager.connectionInfo.rssi
+                  var batteryPct = 0f
+                  var voltage = 0
+                  try {
+                      val batteryIntent = context.registerReceiver(
+                          null,
+                          IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+                      )
+                      val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                      val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+                      batteryPct = if (scale > 0) (level / scale.toFloat()) * 100f else 0f
+                      voltage = batteryIntent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0
+                  } catch (e: Exception) {
+                      e.printStackTrace()
+                  }
+
+                  var connType = "نامشخص"
+                  try {
+                      val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                      val network = cm?.activeNetwork
+                      val capabilities = cm?.getNetworkCapabilities(network)
+                      connType = when {
+                          capabilities == null -> "قطع"
+                          capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "وای‌فای (متصل)"
+                          capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "داده همراه (متصل)"
+                          else -> "شبکه متصل"
+                      }
+                  } catch (e: Exception) {
+                      e.printStackTrace()
+                  }
+
                   val uid = android.os.Process.myUid()
                   val rxBytes = TrafficStats.getUidRxBytes(uid)
+
                   return SystemMetrics(
                       timestamp = System.currentTimeMillis(),
                       batteryLevel = batteryPct,
                       voltageMv = voltage,
-                      wifiRssi = rssi,
-                      rxBytesTotal = rxBytes,
+                      connectionType = connType,
+                      rxBytesTotal = if (rxBytes < 0) 0 else rxBytes,
                       isSmartModeActive = isSmartMode
                   )
               }
@@ -299,7 +333,6 @@ workflows:
           cat << 'EOF' > app/src/main/java/com/example/adaptivemediaoptimizer/MainActivity.kt
           package com.example.adaptivemediaoptimizer
 
-          import android.content.Intent
           import android.net.Uri
           import android.os.Bundle
           import android.os.Handler
@@ -308,6 +341,7 @@ workflows:
           import android.widget.EditText
           import android.widget.TextView
           import android.widget.Toast
+          import androidx.activity.result.contract.ActivityResultContracts
           import androidx.appcompat.app.AppCompatActivity
           import androidx.media3.common.MediaItem
           import androidx.media3.exoplayer.DefaultLoadControl
@@ -319,139 +353,154 @@ workflows:
           import java.io.FileWriter
 
           class MainActivity : AppCompatActivity() {
-              private lateinit var playerView: PlayerView
+              private var playerView: PlayerView? = null
               private var player: ExoPlayer? = null
-              private lateinit var trackSelector: DefaultTrackSelector
+              private var trackSelector: DefaultTrackSelector? = null
               private lateinit var profiler: SystemProfiler
               private val logRecords = mutableListOf<SystemMetrics>()
               private val handler = Handler(Looper.getMainLooper())
               private var isSmartMode = false
               private val defaultStreamUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
 
+              private val pickVideoLauncher = registerForActivityResult(
+                  ActivityResultContracts.GetContent()
+              ) { uri: Uri? ->
+                  uri?.let {
+                      findViewById<EditText>(R.id.etVideoUrl)?.setText(it.toString())
+                      playMedia(it)
+                  }
+              }
+
               private val monitorRunnable = object : Runnable {
                   override fun run() {
-                      val metrics = profiler.captureMetrics(isSmartMode)
-                      logRecords.add(metrics)
-                      updateUI(metrics)
+                      try {
+                          val metrics = profiler.captureMetrics(isSmartMode)
+                          logRecords.add(metrics)
+                          updateUI(metrics)
+                      } catch (e: Exception) {
+                          e.printStackTrace()
+                      }
                       handler.postDelayed(this, 1000)
                   }
               }
 
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
-                  setContentView(R.layout.activity_main)
+                  try {
+                      setContentView(R.layout.activity_main)
+                      profiler = SystemProfiler(this)
+                      playerView = findViewById(R.id.playerView)
 
-                  profiler = SystemProfiler(this)
-                  playerView = findViewById(R.id.playerView)
-                  val etVideoUrl = findViewById<EditText>(R.id.etVideoUrl)
-                  val btnPlayUrl = findViewById<Button>(R.id.btnPlayUrl)
-                  val switchSmartMode = findViewById<SwitchMaterial>(R.id.switchSmartMode)
-                  val btnExportLog = findViewById<Button>(R.id.btnExportLog)
+                      val etVideoUrl = findViewById<EditText>(R.id.etVideoUrl)
+                      val btnPlayUrl = findViewById<Button>(R.id.btnPlayUrl)
+                      val btnPickFile = findViewById<Button>(R.id.btnPickFile)
+                      val switchSmartMode = findViewById<SwitchMaterial>(R.id.switchSmartMode)
+                      val btnExportLog = findViewById<Button>(R.id.btnExportLog)
 
-                  initPlayer()
-                  handleIncomingIntent(intent)
+                      initPlayer()
 
-                  btnPlayUrl.setOnClickListener {
-                      val url = etVideoUrl.text.toString().trim()
-                      if (url.isNotEmpty()) {
-                          playMedia(url)
-                      } else {
-                          Toast.makeText(this, "لطفاً لینک ویدیو را وارد کنید", Toast.LENGTH_SHORT).show()
+                      btnPlayUrl?.setOnClickListener {
+                          val url = etVideoUrl?.text?.toString()?.trim() ?: ""
+                          if (url.isNotEmpty()) {
+                              playMedia(Uri.parse(url))
+                          } else {
+                              Toast.makeText(this, "لطفاً آدرس ویدیو را وارد کنید", Toast.LENGTH_SHORT).show()
+                          }
                       }
-                  }
 
-                  switchSmartMode.setOnCheckedChangeListener { _, isChecked ->
-                      isSmartMode = isChecked
-                      applyEnergyPolicy(isChecked)
-                  }
-
-                  btnExportLog.setOnClickListener {
-                      saveLogsToCsv()
-                  }
-
-                  handler.post(monitorRunnable)
-              }
-
-              override fun onNewIntent(intent: Intent) {
-                  super.onNewIntent(intent)
-                  setIntent(intent)
-                  handleIncomingIntent(intent)
-              }
-
-              private fun handleIncomingIntent(intent: Intent?) {
-                  if (intent?.action == Intent.ACTION_VIEW) {
-                      val videoUri = intent.data
-                      videoUri?.let {
-                          findViewById<EditText>(R.id.etVideoUrl).setText(it.toString())
-                          playMedia(it.toString())
+                      btnPickFile?.setOnClickListener {
+                          try {
+                              pickVideoLauncher.launch("video/*")
+                          } catch (e: Exception) {
+                              Toast.makeText(this, "امکان باز کردن گالری وجود ندارد", Toast.LENGTH_SHORT).show()
+                          }
                       }
-                  } else {
-                      playMedia(defaultStreamUrl)
+
+                      switchSmartMode?.setOnCheckedChangeListener { _, isChecked ->
+                          isSmartMode = isChecked
+                          applyEnergyPolicy(isChecked)
+                      }
+
+                      btnExportLog?.setOnClickListener {
+                          saveLogsToCsv()
+                      }
+
+                      handler.post(monitorRunnable)
+                  } catch (e: Exception) {
+                      e.printStackTrace()
+                      Toast.makeText(this, "خطا در راه‌اندازی: ${e.message}", Toast.LENGTH_LONG).show()
                   }
               }
 
               private fun initPlayer() {
-                  trackSelector = DefaultTrackSelector(this)
-                  val loadControl = DefaultLoadControl.Builder()
-                      .setBufferDurationsMs(15000, 50000, 2500, 5000)
-                      .build()
-                  player = ExoPlayer.Builder(this)
-                      .setTrackSelector(trackSelector)
-                      .setLoadControl(loadControl)
-                      .build()
-                  playerView.player = player
+                  try {
+                      trackSelector = DefaultTrackSelector(this)
+                      val loadControl = DefaultLoadControl.Builder()
+                          .setBufferDurationsMs(15000, 50000, 2500, 5000)
+                          .build()
+                      player = ExoPlayer.Builder(this)
+                          .setTrackSelector(trackSelector!!)
+                          .setLoadControl(loadControl)
+                          .build()
+                      playerView?.player = player
+                  } catch (e: Exception) {
+                      e.printStackTrace()
+                  }
               }
 
-              private fun playMedia(url: String) {
+              private fun playMedia(uri: Uri) {
                   try {
-                      val mediaItem = MediaItem.fromUri(Uri.parse(url))
+                      val mediaItem = MediaItem.fromUri(uri)
                       player?.setMediaItem(mediaItem)
                       player?.prepare()
                       player?.playWhenReady = true
                   } catch (e: Exception) {
-                      Toast.makeText(this, "خطا در بارگذاری ویدیو: ${e.message}", Toast.LENGTH_SHORT).show()
+                      Toast.makeText(this, "خطا در پخش: ${e.message}", Toast.LENGTH_SHORT).show()
                   }
               }
 
               private fun applyEnergyPolicy(enableSmart: Boolean) {
-                  if (enableSmart) {
-                      trackSelector.setParameters(
-                          trackSelector.buildUponParameters()
-                              .setMaxVideoSize(854, 480)
-                              .setMaxVideoBitrate(800_000)
-                      )
-                      Toast.makeText(this, "سیاست بهینه (سقف 480p) فعال شد", Toast.LENGTH_SHORT).show()
-                  } else {
-                      trackSelector.setParameters(
-                          trackSelector.buildUponParameters()
-                              .clearVideoSizeConstraints()
-                              .setMaxVideoBitrate(Int.MAX_VALUE)
-                      )
-                      Toast.makeText(this, "حالت عادی (بدون محدودیت) فعال شد", Toast.LENGTH_SHORT).show()
+                  trackSelector?.let { selector ->
+                      if (enableSmart) {
+                          selector.setParameters(
+                              selector.buildUponParameters()
+                                  .setMaxVideoSize(854, 480)
+                                  .setMaxVideoBitrate(800_000)
+                          )
+                          Toast.makeText(this, "سیاست بهینه (سقف 480p) فعال شد", Toast.LENGTH_SHORT).show()
+                      } else {
+                          selector.setParameters(
+                              selector.buildUponParameters()
+                                  .clearVideoSizeConstraints()
+                                  .setMaxVideoBitrate(Int.MAX_VALUE)
+                          )
+                          Toast.makeText(this, "حالت عادی (بدون محدودیت) فعال شد", Toast.LENGTH_SHORT).show()
+                      }
                   }
               }
 
               private fun updateUI(m: SystemMetrics) {
-                  findViewById<TextView>(R.id.txtBattery).text = 
+                  findViewById<TextView>(R.id.txtBattery)?.text = 
                       "باتری: ${String.format("%.1f", m.batteryLevel)}% | ولتاژ: ${m.voltageMv} mV"
-                  findViewById<TextView>(R.id.txtNetwork).text = 
-                      "سیگنال وای‌فای: ${m.wifiRssi} dBm"
-                  findViewById<TextView>(R.id.txtTraffic).text = 
+                  findViewById<TextView>(R.id.txtNetwork)?.text = 
+                      "وضعیت شبکه: ${m.connectionType}"
+                  findViewById<TextView>(R.id.txtTraffic)?.text = 
                       "حجم ترافیک دریافتی: ${m.rxBytesTotal / 1024} KB"
               }
 
               private fun saveLogsToCsv() {
                   try {
-                      val file = File(getExternalFilesDir(null), "MS_Player_Energy_Log.csv")
+                      val dir = getExternalFilesDir(null) ?: filesDir
+                      val file = File(dir, "MS_Player_Energy_Log.csv")
                       val writer = FileWriter(file)
-                      writer.append("Timestamp,BatteryLevel,Voltage_mV,WifiRSSI,RxBytes,IsSmartMode\n")
+                      writer.append("Timestamp,BatteryLevel,Voltage_mV,ConnectionType,RxBytes,IsSmartMode\n")
                       for (record in logRecords) {
-                          writer.append("${record.timestamp},${record.batteryLevel},${record.voltageMv},${record.wifiRssi},${record.rxBytesTotal},${record.isSmartModeActive}\n")
+                          writer.append("${record.timestamp},${record.batteryLevel},${record.voltageMv},${record.connectionType},${record.rxBytesTotal},${record.isSmartModeActive}\n")
                       }
                       writer.flush()
                       writer.close()
-                      findViewById<TextView>(R.id.txtLogStatus).text = "لاگ ذخیره شد:\n${file.absolutePath}"
-                      Toast.makeText(this, "فایل لاگ ذخیره شد", Toast.LENGTH_LONG).show()
+                      findViewById<TextView>(R.id.txtLogStatus)?.text = "لاگ ذخیره شد:\n${file.absolutePath}"
+                      Toast.makeText(this, "فایل لاگ با موفقیت ذخیره شد", Toast.LENGTH_LONG).show()
                   } catch (e: Exception) {
                       Toast.makeText(this, "خطا در ذخیره لاگ: ${e.message}", Toast.LENGTH_SHORT).show()
                   }

@@ -1,12 +1,28 @@
-workflows:
-  android-build:
-    name: Build MS Player APK
-    max_build_duration: 15
-    environment:
-      java: 17
-    scripts:
-      - name: Generate Codebase
-        script: |
+name: Build and Release APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Create Project Files
+        run: |
           mkdir -p app/src/main/java/com/example/adaptivemediaoptimizer
           mkdir -p app/src/main/res/layout
           mkdir -p app/src/main/res/values
@@ -196,7 +212,7 @@ workflows:
                       android:backgroundTint="#37474F"/>
 
                   <com.google.android.material.switchmaterial.SwitchMaterial
-                  android:id="@+id/switchSmartMode"
+                      android:id="@+id/switchSmartMode"
                       android:layout_width="match_parent"
                       android:layout_height="wrap_content"
                       android:layout_marginTop="8dp"
@@ -515,22 +531,17 @@ workflows:
           EOF
 
       - name: Build Android APK
-        script: |
+        run: |
           wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip
           unzip -q gradle-8.4-bin.zip
           ./gradle-8.4/bin/gradle :app:assembleDebug -Pandroid.useAndroidX=true -Pandroid.enableJetifier=true --no-daemon
+          mv app/build/outputs/apk/debug/*.apk MS_Player_v1.2.apk
 
-      - name: Direct Upload & Generate Unrestricted Download Link
-        script: |
-          APK_PATH=$(find app/build/outputs/apk/debug -name "*.apk" | head -n 1)
-          echo "=========================================================="
-          echo "UPLOAD TO BASHUPLOAD (NO GEO-RESTRICTION):"
-          curl -s https://bashupload.com/MS_Player_v1.2.apk --data-binary @"$APK_PATH"
-          echo ""
-          echo "=========================================================="
-          echo "UPLOAD TO FILE.IO (MIRROR):"
-          curl -s -F "file=@$APK_PATH" https://file.io | grep -o '"link":"[^"]*' | sed 's/"link":"//'
-          echo "=========================================================="
-
-    artifacts:
-      - app/build/outputs/apk/debug/*.apk
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.2-${{ github.run_number }}
+          name: MS Player Release v1.2
+          files: MS_Player_v1.2.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

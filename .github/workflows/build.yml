@@ -1,12 +1,15 @@
-name: Build APK
+name: Build Full Media Player APK
 
 on:
   push:
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -18,10 +21,11 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Create Complete Project
+      - name: Generate Offline Media Player Codebase
         run: |
           mkdir -p app/src/main/java/com/example/adaptivemediaoptimizer
           mkdir -p app/src/main/res/layout
+          mkdir -p app/src/main/res/values
 
           cat << 'EOF' > gradle.properties
           android.useAndroidX=true
@@ -45,7 +49,7 @@ jobs:
                   mavenCentral()
               }
           }
-          rootProject.name = "MSPlayer"
+          rootProject.name = "MSMediaPlayer"
           include ':app'
           EOF
 
@@ -70,12 +74,15 @@ jobs:
                   applicationId "com.example.adaptivemediaoptimizer"
                   minSdk 24
                   targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
+                  versionCode 7
+                  versionName "2.2"
               }
 
               buildTypes {
                   release {
+                      minifyEnabled false
+                  }
+                  debug {
                       minifyEnabled false
                   }
               }
@@ -93,55 +100,129 @@ jobs:
               implementation 'androidx.appcompat:appcompat:1.6.1'
               implementation 'com.google.android.material:material:1.11.0'
               implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+              implementation 'androidx.activity:activity-ktx:1.8.0'
+              implementation 'androidx.recyclerview:recyclerview:1.3.2'
               implementation 'androidx.media3:media3-exoplayer:1.3.1'
               implementation 'androidx.media3:media3-ui:1.3.1'
-              implementation 'androidx.media3:media3-exoplayer-hls:1.3.1'
           }
+          EOF
+
+          cat << 'EOF' > app/src/main/res/values/colors.xml
+          <resources>
+              <color name="bg_main">#0A0E17</color>
+              <color name="card_bg">#131B2A</color>
+              <color name="card_border">#1E293B</color>
+              <color name="primary_cyan">#00E5FF</color>
+              <color name="primary_green">#00E676</color>
+              <color name="text_white">#FFFFFF</color>
+              <color name="text_dim">#94A3B8</color>
+          </resources>
+          EOF
+
+          cat << 'EOF' > app/src/main/res/values/themes.xml
+          <resources>
+              <style name="Theme.MSPlayer" parent="Theme.Material3.Dark.NoActionBar">
+                  <item name="colorPrimary">@color/primary_cyan</item>
+                  <item name="colorSecondary">@color/primary_green</item>
+                  <item name="android:windowBackground">@color/bg_main</item>
+                  <item name="android:statusBarColor">@color/bg_main</item>
+                  <item name="android:navigationBarColor">@color/bg_main</item>
+              </style>
+          </resources>
           EOF
 
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-              <uses-permission android:name="android.permission.INTERNET" />
-              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-              <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+              <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
               <application
                   android:allowBackup="true"
                   android:icon="@android:drawable/sym_def_app_icon"
-                  android:label="M.S Player"
+                  android:label="M.S Media Player"
                   android:supportsRtl="true"
-                  android:theme="@style/Theme.AppCompat.DayNight.NoActionBar"
-                  android:usesCleartextTraffic="true">
+                  android:theme="@style/Theme.MSPlayer">
                   <activity
                       android:name=".MainActivity"
                       android:exported="true"
-                      android:configChanges="orientation|screenSize">
+                      android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
-                      <intent-filter>
-                          <action android:name="android.intent.action.VIEW" />
-                          <category android:name="android.intent.category.DEFAULT" />
-                          <category android:name="android.intent.category.BROWSABLE" />
-                          <data android:scheme="http" />
-                          <data android:scheme="https" />
-                          <data android:mimeType="video/*" />
-                      </intent-filter>
-                      <intent-filter>
-                          <action android:name="android.intent.action.VIEW" />
-                          <category android:name="android.intent.category.DEFAULT" />
-                          <category android:name="android.intent.category.BROWSABLE" />
-                          <data android:scheme="http" />
-                          <data android:scheme="https" />
-                          <data android:host="*" />
-                          <data android:pathPattern=".*\\.mp4" />
-                          <data android:pathPattern=".*\\.m3u8" />
-                      </intent-filter>
                   </activity>
               </application>
           </manifest>
+          EOF
+
+          cat << 'EOF' > app/src/main/res/layout/item_video.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:layout_marginBottom="8dp"
+              app:cardBackgroundColor="@color/card_bg"
+              app:strokeColor="@color/card_border"
+              app:strokeWidth="1dp"
+              app:cardCornerRadius="12dp">
+
+              <LinearLayout
+                  android:layout_width="match_parent"
+                  android:layout_height="wrap_content"
+                  android:orientation="horizontal"
+                  android:padding="12dp"
+                  android:gravity="center_vertical">
+
+                  <TextView
+                      android:layout_width="42dp"
+                      android:layout_height="42dp"
+                      android:background="#1E293B"
+                      android:gravity="center"
+                      android:text="▶"
+                      android:textColor="@color/primary_cyan"
+                      android:textSize="18sp"/>
+
+                  <LinearLayout
+                      android:layout_width="0dp"
+                      android:layout_height="wrap_content"
+                      android:layout_weight="1"
+                      android:layout_marginStart="12dp"
+                      android:orientation="vertical">
+
+                      <TextView
+                          android:id="@+id/txtVideoTitle"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:textColor="@color/text_white"
+                          android:textSize="14sp"
+                          android:textStyle="bold"
+                          android:maxLines="1"
+                          android:ellipsize="end"
+                          android:text="Video Title.mp4"/>
+
+                      <TextView
+                          android:id="@+id/txtVideoMeta"
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:textColor="@color/text_dim"
+                          android:textSize="11sp"
+                          android:layout_marginTop="2dp"
+                          android:text="14.2 MB • 03:20"/>
+                  </LinearLayout>
+
+                  <Button
+                      android:id="@+id/btnPlayItem"
+                      android:layout_width="wrap_content"
+                      android:layout_height="36dp"
+                      android:text="انتخاب"
+                      android:textSize="11sp"
+                      android:backgroundTint="#2A384F"
+                      android:textColor="@color/primary_cyan"
+                      app:cornerRadius="6dp"/>
+              </LinearLayout>
+          </com.google.android.material.card.MaterialCardView>
           EOF
 
           cat << 'EOF' > app/src/main/res/layout/activity_main.xml
@@ -151,68 +232,22 @@ jobs:
               android:layout_width="match_parent"
               android:layout_height="match_parent"
               android:orientation="vertical"
-              android:padding="16dp"
-              android:background="#121212">
+              android:background="@color/bg_main">
 
-              <TextView
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:text="M.S Player"
-                  android:textColor="#FFFFFF"
-                  android:textSize="20sp"
-                  android:textStyle="bold"
-                  android:layout_gravity="center"
-                  android:layout_marginBottom="12dp"/>
-
+              <!-- Player View -->
               <androidx.media3.ui.PlayerView
                   android:id="@+id/playerView"
                   android:layout_width="match_parent"
-                  android:layout_height="210dp"
+                  android:layout_height="220dp"
                   android:background="#000000"
-                  app:use_controller="true" />
+                  app:use_controller="true"
+                  app:show_buffering="always"
+                  app:resize_mode="fit"/>
 
-              <LinearLayout
+              <ScrollView
                   android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:orientation="horizontal"
-                  android:layout_marginTop="10dp">
-
-                  <EditText
-                      android:id="@+id/etVideoUrl"
-                      android:layout_width="0dp"
-                      android:layout_height="wrap_content"
-                      android:layout_weight="1"
-                      android:hint="لینک ویدیو را وارد کنید..."
-                      android:textColorHint="#888888"
-                      android:textColor="#FFFFFF"
-                      android:textSize="14sp"
-                      android:backgroundTint="#80D8FF"
-                      android:singleLine="true"/>
-
-                  <Button
-                      android:id="@+id/btnPlayUrl"
-                      android:layout_width="wrap_content"
-                      android:layout_height="wrap_content"
-                      android:text="پخش"
-                      android:layout_marginStart="8dp"
-                      android:backgroundTint="#5a3db8"/>
-              </LinearLayout>
-
-              <com.google.android.material.switchmaterial.SwitchMaterial
-                  android:id="@+id/switchSmartMode"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="8dp"
-                  android:text="حالت بهینه‌ساز انرژی هوشمند"
-                  android:textColor="#80D8FF"
-                  android:textSize="15sp"/>
-
-              <com.google.android.material.card.MaterialCardView
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="10dp"
-                  app:cardBackgroundColor="#1E1E1E"
-                  app:cardCornerRadius="12dp">
+                  android:layout_height="match_parent"
+                  android:fillViewport="true">
 
                   <LinearLayout
                       android:layout_width="match_parent"
@@ -220,273 +255,542 @@ jobs:
                       android:orientation="vertical"
                       android:padding="12dp">
 
-                      <TextView
-                          android:id="@+id/txtBattery"
-                          android:layout_width="wrap_content"
+                      <!-- Now Playing Info & Mode Switch -->
+                      <com.google.android.material.card.MaterialCardView
+                          android:layout_width="match_parent"
                           android:layout_height="wrap_content"
-                          android:text="باتری: --"
-                          android:textColor="#E0E0E0"
-                          android:layout_marginBottom="4dp"/>
+                          app:cardBackgroundColor="@color/card_bg"
+                          app:strokeColor="@color/card_border"
+                          app:strokeWidth="1dp"
+                          app:cardCornerRadius="12dp"
+                          android:layout_marginBottom="10dp">
 
-                      <TextView
-                          android:id="@+id/txtNetwork"
-                          android:layout_width="wrap_content"
-                          android:layout_height="wrap_content"
-                          android:text="وضعیت شبکه: --"
-                          android:textColor="#E0E0E0"
-                          android:layout_marginBottom="4dp"/>
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="vertical"
+                              android:padding="12dp">
 
-                      <TextView
-                          android:id="@+id/txtTraffic"
-                          android:layout_width="wrap_content"
-                          android:layout_height="wrap_content"
-                          android:text="حجم ترافیک دریافتی: 0 KB"
-                          android:textColor="#E0E0E0"
-                          android:layout_marginBottom="4dp"/>
+                              <TextView
+                                  android:id="@+id/txtCurrentPlaying"
+                                  android:layout_width="match_parent"
+                                  android:layout_height="wrap_content"
+                                  android:text="ویدیویی انتخاب نشده است"
+                                  android:textColor="@color/text_white"
+                                  android:textSize="13sp"
+                                  android:textStyle="bold"
+                                  android:maxLines="1"
+                                  android:ellipsize="end"/>
 
-                      <TextView
-                          android:id="@+id/txtLogStatus"
-                          android:layout_width="wrap_content"
+                              <View
+                                  android:layout_width="match_parent"
+                                  android:layout_height="1dp"
+                                  android:background="@color/card_border"
+                                  android:layout_marginTop="8dp"
+                                  android:layout_marginBottom="8dp"/>
+
+                              <LinearLayout
+                                  android:layout_width="match_parent"
+                                  android:layout_height="wrap_content"
+                                  android:orientation="horizontal"
+                                  android:gravity="center_vertical">
+
+                                  <LinearLayout
+                                      android:layout_width="0dp"
+                                      android:layout_height="wrap_content"
+                                      android:layout_weight="1"
+                                      android:orientation="vertical">
+
+                                      <TextView
+                                          android:id="@+id/txtModeTitle"
+                                          android:layout_width="wrap_content"
+                                          android:layout_height="wrap_content"
+                                          android:text="پروفایل: حالت معمولی"
+                                          android:textColor="@color/primary_cyan"
+                                          android:textSize="13sp"
+                                          android:textStyle="bold"/>
+
+                                      <TextView
+                                          android:id="@+id/txtModeSubtitle"
+                                          android:layout_width="wrap_content"
+                                          android:layout_height="wrap_content"
+                                          android:text="برای فعال‌سازی بهینه‌ساز باتری کلید را بزنید"
+                                          android:textColor="@color/text_dim"
+                                          android:textSize="11sp"/>
+                                  </LinearLayout>
+
+                                  <com.google.android.material.switchmaterial.SwitchMaterial
+                                      android:id="@+id/switchMode"
+                                      android:layout_width="wrap_content"
+                                      android:layout_height="wrap_content"/>
+                              </LinearLayout>
+                          </LinearLayout>
+                      </com.google.android.material.card.MaterialCardView>
+
+                      <!-- Hardware Profiler Card -->
+                      <com.google.android.material.card.MaterialCardView
+                          android:layout_width="match_parent"
                           android:layout_height="wrap_content"
-                          android:text="فایل ذخیره نشده است"
-                          android:textColor="#81C784"
-                          android:textSize="12sp"/>
+                          app:cardBackgroundColor="@color/card_bg"
+                          app:strokeColor="@color/card_border"
+                          app:strokeWidth="1dp"
+                          app:cardCornerRadius="12dp"
+                          android:layout_marginBottom="10dp">
+
+                          <LinearLayout
+                              android:layout_width="match_parent"
+                              android:layout_height="wrap_content"
+                              android:orientation="vertical"
+                              android:padding="12dp">
+
+                              <TextView
+                                  android:layout_width="wrap_content"
+                                  android:layout_height="wrap_content"
+                                  android:text="📊 مانیتورینگ متغیرهای دستگاه"
+                                  android:textColor="@color/text_white"
+                                  android:textStyle="bold"
+                                  android:textSize="12sp"
+                                  android:layout_marginBottom="6dp"/>
+
+                              <LinearLayout
+                                  android:layout_width="match_parent"
+                                  android:layout_height="wrap_content"
+                                  android:orientation="horizontal">
+
+                                  <TextView
+                                      android:id="@+id/txtBattery"
+                                      android:layout_width="0dp"
+                                      android:layout_height="wrap_content"
+                                      android:layout_weight="1"
+                                      android:text="🔋 باتری: --%"
+                                      android:textColor="@color/text_dim"
+                                      android:textSize="12sp"/>
+
+                                  <TextView
+                                      android:id="@+id/txtVoltage"
+                                      android:layout_width="0dp"
+                                      android:layout_height="wrap_content"
+                                      android:layout_weight="1"
+                                      android:text="⚡ ولتاژ: -- mV"
+                                      android:textColor="@color/text_dim"
+                                      android:textSize="12sp"/>
+                              </LinearLayout>
+                          </LinearLayout>
+                      </com.google.android.material.card.MaterialCardView>
+
+                      <!-- Media Library Header -->
+                      <LinearLayout
+                          android:layout_width="match_parent"
+                          android:layout_height="wrap_content"
+                          android:orientation="horizontal"
+                          android:gravity="center_vertical"
+                          android:layout_marginBottom="8dp">
+
+                          <TextView
+                              android:id="@+id/txtLibraryHeader"
+                              android:layout_width="0dp"
+                              android:layout_height="wrap_content"
+                              android:layout_weight="1"
+                              android:text="📂 کتابخانه ویدیوهای دستگاه"
+                              android:textColor="@color/text_white"
+                              android:textStyle="bold"
+                              android:textSize="13sp"/>
+
+                          <Button
+                              android:id="@+id/btnOpenFile"
+                              android:layout_width="wrap_content"
+                              android:layout_height="34dp"
+                              android:text="انتخاب فایل 📁"
+                              android:textSize="11sp"
+                              android:backgroundTint="#1E293B"
+                              android:textColor="@color/primary_cyan"
+                              app:cornerRadius="6dp"/>
+                      </LinearLayout>
+
+                      <androidx.recyclerview.widget.RecyclerView
+                          android:id="@+id/rvMediaList"
+                          android:layout_width="match_parent"
+                          android:layout_height="180dp"
+                          android:nestedScrollingEnabled="true"
+                          android:layout_marginBottom="10dp"/>
+
+                      <!-- Export CSV Button -->
+                      <Button
+                          android:id="@+id/btnExportCsv"
+                          android:layout_width="match_parent"
+                          android:layout_height="46dp"
+                          android:text="ذخیره و خروجی لاگ مقایسه‌ای (CSV)"
+                          android:textColor="#000000"
+                          android:textStyle="bold"
+                          android:backgroundTint="@color/primary_green"
+                          app:cornerRadius="10dp"/>
                   </LinearLayout>
-              </com.google.android.material.card.MaterialCardView>
-
-              <Button
-                  android:id="@+id/btnExportLog"
-                  android:layout_width="match_parent"
-                  android:layout_height="wrap_content"
-                  android:layout_marginTop="10dp"
-                  android:text="خروجی گرفتن داده‌های پایان‌نامه (CSV)"
-                  android:backgroundTint="#2E7D32"/>
+              </ScrollView>
           </LinearLayout>
           EOF
 
-          cat << 'EOF' > app/src/main/java/com/example/adaptivemediaoptimizer/SystemProfiler.kt
+          cat << 'EOF' > app/src/main/java/com/example/adaptivemediaoptimizer/MediaItemModel.kt
           package com.example.adaptivemediaoptimizer
 
-          import android.content.Context
-          import android.content.Intent
-          import android.content.IntentFilter
-          import android.net.TrafficStats
-          import android.net.wifi.WifiManager
-          import android.os.BatteryManager
+          import android.net.Uri
 
-          data class SystemMetrics(
-              val timestamp: Long,
-              val batteryLevel: Float,
-              val voltageMv: Int,
-              val wifiRssi: Int,
-              val rxBytesTotal: Long,
-              val isSmartModeActive: Boolean
+          data class MediaVideoItem(
+              val name: String,
+              val uri: Uri,
+              val info: String
           )
+          EOF
 
-          class SystemProfiler(private val context: Context) {
-              fun captureMetrics(isSmartMode: Boolean): SystemMetrics {
-                  val batteryIntent = context.registerReceiver(
-                      null,
-                      IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-                  )
-                  val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
-                  val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
-                  val batteryPct = (level / scale.toFloat()) * 100f
-                  val voltage = batteryIntent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0
-                  val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-                  val rssi = wifiManager.connectionInfo.rssi
-                  val uid = android.os.Process.myUid()
-                  val rxBytes = TrafficStats.getUidRxBytes(uid)
-                  return SystemMetrics(
-                      timestamp = System.currentTimeMillis(),
-                      batteryLevel = batteryPct,
-                      voltageMv = voltage,
-                      wifiRssi = rssi,
-                      rxBytesTotal = rxBytes,
-                      isSmartModeActive = isSmartMode
-                  )
+          cat << 'EOF' > app/src/main/java/com/example/adaptivemediaoptimizer/MediaAdapter.kt
+          package com.example.adaptivemediaoptimizer
+
+          import android.view.LayoutInflater
+          import android.view.View
+          import android.view.ViewGroup
+          import android.widget.Button
+          import android.widget.TextView
+          import androidx.recyclerview.widget.RecyclerView
+
+          class MediaAdapter(
+              private val list: List<MediaVideoItem>,
+              private val onSelect: (MediaVideoItem) -> Unit
+          ) : RecyclerView.Adapter<MediaAdapter.MediaViewHolder>() {
+
+              class MediaViewHolder(v: View) : RecyclerView.ViewHolder(v) {
+                  val txtTitle: TextView = v.findViewById(R.id.txtVideoTitle)
+                  val txtMeta: TextView = v.findViewById(R.id.txtVideoMeta)
+                  val btnPlay: Button = v.findViewById(R.id.btnPlayItem)
               }
+
+              override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
+                  val view = LayoutInflater.from(parent.context).inflate(R.layout.item_video, parent, false)
+                  return MediaViewHolder(view)
+              }
+
+              override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
+                  val item = list[position]
+                  holder.txtTitle.text = item.name
+                  holder.txtMeta.text = item.info
+                  holder.itemView.setOnClickListener { onSelect(item) }
+                  holder.btnPlay.setOnClickListener { onSelect(item) }
+              }
+
+              override fun getItemCount(): Int = list.size
           }
           EOF
 
           cat << 'EOF' > app/src/main/java/com/example/adaptivemediaoptimizer/MainActivity.kt
           package com.example.adaptivemediaoptimizer
 
+          import android.Manifest
+          import android.content.ContentUris
           import android.content.Intent
+          import android.content.IntentFilter
+          import android.content.pm.PackageManager
           import android.net.Uri
+          import android.os.BatteryManager
+          import android.os.Build
           import android.os.Bundle
           import android.os.Handler
           import android.os.Looper
+          import android.provider.MediaStore
           import android.widget.Button
-          import android.widget.EditText
           import android.widget.TextView
           import android.widget.Toast
+          import androidx.activity.result.contract.ActivityResultContracts
           import androidx.appcompat.app.AppCompatActivity
+          import androidx.core.content.ContextCompat
           import androidx.media3.common.MediaItem
           import androidx.media3.exoplayer.DefaultLoadControl
           import androidx.media3.exoplayer.ExoPlayer
           import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
           import androidx.media3.ui.PlayerView
+          import androidx.recyclerview.widget.LinearLayoutManager
+          import androidx.recyclerview.widget.RecyclerView
           import com.google.android.material.switchmaterial.SwitchMaterial
           import java.io.File
           import java.io.FileWriter
 
-          class MainActivity : AppCompatActivity() {
-              private lateinit var playerView: PlayerView
-              private var player: ExoPlayer? = null
-              private lateinit var trackSelector: DefaultTrackSelector
-              private lateinit var profiler: SystemProfiler
-              private val logRecords = mutableListOf<SystemMetrics>()
-              private val handler = Handler(Looper.getMainLooper())
-              private var isSmartMode = false
-              private val defaultStreamUrl = "https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8"
+          data class ThesisRecord(
+              val time: Long,
+              val videoName: String,
+              val playheadMs: Long,
+              val batteryLevel: Float,
+              val voltageMv: Int,
+              val profileMode: String
+          )
 
-              private val monitorRunnable = object : Runnable {
+          class MainActivity : AppCompatActivity() {
+              private var playerView: PlayerView? = null
+              private var player: ExoPlayer? = null
+              private var isOptimized = false
+              private var currentUri: Uri? = null
+              private var currentName = "هیچ فایلی انتخاب نشده"
+
+              private val thesisLogs = mutableListOf<ThesisRecord>()
+              private val handler = Handler(Looper.getMainLooper())
+              private val mediaItems = mutableListOf<MediaVideoItem>()
+              private lateinit var adapter: MediaAdapter
+
+              private val filePickerLauncher = registerForActivityResult(
+                  ActivityResultContracts.GetContent()
+              ) { uri: Uri? ->
+                  uri?.let {
+                      currentUri = it
+                      currentName = it.lastPathSegment ?: "Custom File"
+                      loadAndPlayVideo(it, currentName)
+                  }
+              }
+
+              private val permLauncher = registerForActivityResult(
+                  ActivityResultContracts.RequestMultiplePermissions()
+              ) {
+                  scanDeviceVideos()
+              }
+
+              private val ticker = object : Runnable {
                   override fun run() {
-                      val metrics = profiler.captureMetrics(isSmartMode)
-                      logRecords.add(metrics)
-                      updateUI(metrics)
+                      try {
+                          val rec = collectMetric()
+                          thesisLogs.add(rec)
+                          findViewById<TextView>(R.id.txtBattery)?.text = "🔋 باتری: ${String.format("%.1f", rec.batteryLevel)}%"
+                          findViewById<TextView>(R.id.txtVoltage)?.text = "⚡ ولتاژ: ${rec.voltageMv} mV"
+                      } catch (e: Throwable) {
+                          e.printStackTrace()
+                      }
                       handler.postDelayed(this, 1000)
                   }
               }
 
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
-                  setContentView(R.layout.activity_main)
-
-                  profiler = SystemProfiler(this)
-                  playerView = findViewById(R.id.playerView)
-                  val etVideoUrl = findViewById<EditText>(R.id.etVideoUrl)
-                  val btnPlayUrl = findViewById<Button>(R.id.btnPlayUrl)
-                  val switchSmartMode = findViewById<SwitchMaterial>(R.id.switchSmartMode)
-                  val btnExportLog = findViewById<Button>(R.id.btnExportLog)
-
-                  initPlayer()
-                  handleIncomingIntent(intent)
-
-                  btnPlayUrl.setOnClickListener {
-                      val url = etVideoUrl.text.toString().trim()
-                      if (url.isNotEmpty()) {
-                          playMedia(url)
-                      } else {
-                          Toast.makeText(this, "لطفاً لینک ویدیو را وارد کنید", Toast.LENGTH_SHORT).show()
-                      }
-                  }
-
-                  switchSmartMode.setOnCheckedChangeListener { _, isChecked ->
-                      isSmartMode = isChecked
-                      applyEnergyPolicy(isChecked)
-                  }
-
-                  btnExportLog.setOnClickListener {
-                      saveLogsToCsv()
-                  }
-
-                  handler.post(monitorRunnable)
-              }
-
-              override fun onNewIntent(intent: Intent) {
-                  super.onNewIntent(intent)
-                  setIntent(intent)
-                  handleIncomingIntent(intent)
-              }
-
-              private fun handleIncomingIntent(intent: Intent?) {
-                  if (intent?.action == Intent.ACTION_VIEW) {
-                      val videoUri = intent.data
-                      videoUri?.let {
-                          findViewById<EditText>(R.id.etVideoUrl).setText(it.toString())
-                          playMedia(it.toString())
-                      }
-                  } else {
-                      playMedia(defaultStreamUrl)
-                  }
-              }
-
-              private fun initPlayer() {
-                  trackSelector = DefaultTrackSelector(this)
-                  val loadControl = DefaultLoadControl.Builder()
-                      .setBufferDurationsMs(15000, 50000, 2500, 5000)
-                      .build()
-                  player = ExoPlayer.Builder(this)
-                      .setTrackSelector(trackSelector)
-                      .setLoadControl(loadControl)
-                      .build()
-                  playerView.player = player
-              }
-
-              private fun playMedia(url: String) {
                   try {
-                      val mediaItem = MediaItem.fromUri(Uri.parse(url))
-                      player?.setMediaItem(mediaItem)
+                      setContentView(R.layout.activity_main)
+                      playerView = findViewById(R.id.playerView)
+
+                      val switchMode = findViewById<SwitchMaterial>(R.id.switchMode)
+                      val btnOpenFile = findViewById<Button>(R.id.btnOpenFile)
+                      val btnExportCsv = findViewById<Button>(R.id.btnExportCsv)
+                      val rvMediaList = findViewById<RecyclerView>(R.id.rvMediaList)
+
+                      rvMediaList.layoutManager = LinearLayoutManager(this)
+                      adapter = MediaAdapter(mediaItems) { item ->
+                          currentUri = item.uri
+                          currentName = item.name
+                          loadAndPlayVideo(item.uri, item.name)
+                      }
+                      rvMediaList.adapter = adapter
+
+                      buildPlayerInstance(isOptimized)
+                      requestStorageAndScan()
+
+                      btnOpenFile.setOnClickListener {
+                          filePickerLauncher.launch("video/*")
+                      }
+
+                      switchMode.setOnCheckedChangeListener { _, isChecked ->
+                          isOptimized = isChecked
+                          findViewById<TextView>(R.id.txtModeTitle)?.text = 
+                              if (isChecked) "پروفایل: حالت بهینه‌ساز هوشمند انرژی" else "پروفایل: حالت پخش عادی"
+                          findViewById<TextView>(R.id.txtModeSubtitle)?.text = 
+                              if (isChecked) "بافر عمیق و کاهش توان پردازشی فعال است" else "پخش با حداکثر ظرفیت سخت‌افزاری"
+                          
+                          // بازسازی پلیر با اعمال پروفایل جدید بدون توقف موقعیت ویدیو
+                          buildPlayerInstance(isOptimized)
+                      }
+
+                      btnExportCsv.setOnClickListener {
+                          exportToCsv()
+                      }
+
+                      handler.post(ticker)
+                  } catch (e: Throwable) {
+                      e.printStackTrace()
+                  }
+              }
+
+              private fun buildPlayerInstance(optimized: Boolean) {
+                  try {
+                      val resumePos = player?.currentPosition ?: 0L
+                      player?.release()
+
+                      val trackSelector = DefaultTrackSelector(this)
+
+                      val loadControl = if (optimized) {
+                          // حالت بهینه انرژی: افزایش زمان بافر جهت کاهش دفعات Wake-up پردازنده و رم
+                          DefaultLoadControl.Builder()
+                              .setBufferDurationsMs(25000, 60000, 3000, 5000)
+                              .build()
+                      } else {
+                          // حالت عادی: بافر استاندارد با بارگذاری لحظه‌ای
+                          DefaultLoadControl.Builder()
+                              .setBufferDurationsMs(2500, 10000, 1000, 1500)
+                              .build()
+                      }
+
+                      player = ExoPlayer.Builder(this)
+                          .setTrackSelector(trackSelector)
+                          .setLoadControl(loadControl)
+                          .build()
+
+                      playerView?.player = player
+
+                      currentUri?.let { uri ->
+                          val mediaItem = MediaItem.fromUri(uri)
+                          player?.setMediaItem(mediaItem)
+                          player?.seekTo(resumePos)
+                          player?.prepare()
+                          player?.playWhenReady = true
+                      }
+                  } catch (e: Throwable) {
+                      e.printStackTrace()
+                  }
+              }
+
+              private fun loadAndPlayVideo(uri: Uri, name: String) {
+                  try {
+                      currentUri = uri
+                      currentName = name
+                      findViewById<TextView>(R.id.txtCurrentPlaying)?.text = "در حال پخش: $name"
+                      val item = MediaItem.fromUri(uri)
+                      player?.setMediaItem(item)
                       player?.prepare()
                       player?.playWhenReady = true
-                  } catch (e: Exception) {
-                      Toast.makeText(this, "خطا در بارگذاری ویدیو: ${e.message}", Toast.LENGTH_SHORT).show()
+                      Toast.makeText(this, "پخش: $name", Toast.LENGTH_SHORT).show()
+                  } catch (e: Throwable) {
+                      Toast.makeText(this, "خطا در پخش ویدیو", Toast.LENGTH_SHORT).show()
                   }
               }
 
-              private fun applyEnergyPolicy(enableSmart: Boolean) {
-                  if (enableSmart) {
-                      trackSelector.setParameters(
-                          trackSelector.buildUponParameters()
-                              .setMaxVideoSize(854, 480)
-                              .setMaxVideoBitrate(800_000)
-                      )
-                      Toast.makeText(this, "سیاست بهینه (سقف 480p) فعال شد", Toast.LENGTH_SHORT).show()
+              private fun requestStorageAndScan() {
+                  if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                      if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO) == PackageManager.PERMISSION_GRANTED) {
+                          scanDeviceVideos()
+                      } else {
+                          permLauncher.launch(arrayOf(Manifest.permission.READ_MEDIA_VIDEO))
+                      }
                   } else {
-                      trackSelector.setParameters(
-                          trackSelector.buildUponParameters()
-                              .clearVideoSizeConstraints()
-                              .setMaxVideoBitrate(Int.MAX_VALUE)
-                      )
-                      Toast.makeText(this, "حالت عادی (بدون محدودیت) فعال شد", Toast.LENGTH_SHORT).show()
+                      if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                          scanDeviceVideos()
+                      } else {
+                          permLauncher.launch(arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE))
+                      }
                   }
               }
 
-              private fun updateUI(m: SystemMetrics) {
-                  findViewById<TextView>(R.id.txtBattery).text = 
-                      "باتری: ${String.format("%.1f", m.batteryLevel)}% | ولتاژ: ${m.voltageMv} mV"
-                  findViewById<TextView>(R.id.txtNetwork).text = 
-                      "سیگنال وای‌فای: ${m.wifiRssi} dBm"
-                  findViewById<TextView>(R.id.txtTraffic).text = 
-                      "حجم ترافیک دریافتی: ${m.rxBytesTotal / 1024} KB"
+              private fun scanDeviceVideos() {
+                  try {
+                      mediaItems.clear()
+                      val proj = arrayOf(
+                          MediaStore.Video.Media._ID,
+                          MediaStore.Video.Media.DISPLAY_NAME,
+                          MediaStore.Video.Media.SIZE,
+                          MediaStore.Video.Media.DURATION
+                      )
+                      contentResolver.query(
+                          MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+                          proj,
+                          null,
+                          null,
+                          "${MediaStore.Video.Media.DATE_ADDED} DESC"
+                      )?.use { cursor ->
+                          val idCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media._ID)
+                          val nameCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DISPLAY_NAME)
+                          val sizeCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.SIZE)
+                          val durCol = cursor.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION)
+
+                          while (cursor.moveToNext()) {
+                              val id = cursor.getLong(idCol)
+                              val name = cursor.getString(nameCol) ?: "Media Video"
+                              val size = cursor.getLong(sizeCol)
+                              val dur = cursor.getLong(durCol) / 1000
+                              val uri = ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+
+                              val min = dur / 60
+                              val sec = dur % 60
+                              val meta = String.format("%.1f MB • %02d:%02d", size / (1024f * 1024f), min, sec)
+                              mediaItems.add(MediaVideoItem(name, uri, meta))
+                          }
+                      }
+                      adapter.notifyDataSetChanged()
+                      findViewById<TextView>(R.id.txtLibraryHeader)?.text = "📂 ویدیوهای گوشی (${mediaItems.size} ویدیو)"
+
+                      if (mediaItems.isNotEmpty() && currentUri == null) {
+                          loadAndPlayVideo(mediaItems[0].uri, mediaItems[0].name)
+                      }
+                  } catch (e: Throwable) {
+                      e.printStackTrace()
+                  }
               }
 
-              private fun saveLogsToCsv() {
+              private fun collectMetric(): ThesisRecord {
+                  var batPct = 0f
+                  var volt = 0
                   try {
-                      val file = File(getExternalFilesDir(null), "MS_Player_Energy_Log.csv")
+                      val intent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+                      val lvl = intent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
+                      val scale = intent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
+                      batPct = if (scale > 0) (lvl / scale.toFloat()) * 100f else 0f
+                      volt = intent?.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0) ?: 0
+                  } catch (e: Throwable) {
+                      e.printStackTrace()
+                  }
+
+                  val pos = player?.currentPosition ?: 0L
+                  return ThesisRecord(
+                      time = System.currentTimeMillis(),
+                      videoName = currentName,
+                      playheadMs = pos,
+                      batteryLevel = batPct,
+                      voltageMv = volt,
+                      profileMode = if (isOptimized) "Optimized_Energy_Mode" else "Standard_Normal_Mode"
+                  )
+              }
+
+              private fun exportToCsv() {
+                  try {
+                      val dir = getExternalFilesDir(null) ?: filesDir
+                      val file = File(dir, "MS_Player_Thesis_Dataset.csv")
                       val writer = FileWriter(file)
-                      writer.append("Timestamp,BatteryLevel,Voltage_mV,WifiRSSI,RxBytes,IsSmartMode\n")
-                      for (record in logRecords) {
-                          writer.append("${record.timestamp},${record.batteryLevel},${record.voltageMv},${record.wifiRssi},${record.rxBytesTotal},${record.isSmartModeActive}\n")
+                      writer.append("Timestamp,VideoName,Playhead_ms,Battery_Pct,Voltage_mV,Profile_Mode\n")
+                      for (r in thesisLogs) {
+                          writer.append("${r.time},\"${r.videoName}\",${r.playheadMs},${r.batteryLevel},${r.voltageMv},${r.profileMode}\n")
                       }
                       writer.flush()
                       writer.close()
-                      findViewById<TextView>(R.id.txtLogStatus).text = "لاگ ذخیره شد:\n${file.absolutePath}"
-                      Toast.makeText(this, "فایل لاگ ذخیره شد", Toast.LENGTH_LONG).show()
-                  } catch (e: Exception) {
-                      Toast.makeText(this, "خطا در ذخیره لاگ: ${e.message}", Toast.LENGTH_SHORT).show()
+                      Toast.makeText(this, "فایل لاگ ذخیره شد: ${file.name}", Toast.LENGTH_LONG).show()
+                  } catch (e: Throwable) {
+                      Toast.makeText(this, "خطا در ذخیره فایل", Toast.LENGTH_SHORT).show()
                   }
               }
 
               override fun onDestroy() {
                   super.onDestroy()
-                  handler.removeCallbacks(monitorRunnable)
+                  handler.removeCallbacks(ticker)
                   player?.release()
                   player = null
               }
           }
           EOF
 
-      - name: Build Debug APK
+      - name: Build and Sign Final APK
         run: |
           wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip
           unzip -q gradle-8.4-bin.zip
           ./gradle-8.4/bin/gradle :app:assembleDebug -Pandroid.useAndroidX=true -Pandroid.enableJetifier=true --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk MS_MediaPlayer_v2.2.apk
 
-      - name: Upload APK Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: MS-Player-APK
-          path: app/build/outputs/apk/debug/*.apk
+          name: MS-MediaPlayer-v2.2
+          path: MS_MediaPlayer_v2.2.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v2.2-${{ github.run_number }}
+          name: MS Media Player v2.2 (Local Edition)
+          files: MS_MediaPlayer_v2.2.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
